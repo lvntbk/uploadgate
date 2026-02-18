@@ -22,9 +22,8 @@ jobs:
           echo "Upload API version: $(cat version-upload-api)"
 
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: check
-
     steps:
       - uses: actions/checkout@v4
 
@@ -34,30 +33,21 @@ jobs:
           echo "router_tag=$(cat version-router)" >> $GITHUB_OUTPUT
           echo "api_tag=$(cat version-upload-api)" >> $GITHUB_OUTPUT
 
-      - name: Deploy to server via SSH
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          script: |
-            set -e
+      - name: Build images
+        run: |
+          docker build -t uploadgate-router:${{ steps.ver.outputs.router_tag }} ./router
+          docker build -t uploadgate-upload-api:${{ steps.ver.outputs.api_tag }} ./upload-api
 
-            cd ~/uploadgate
-            git pull
+      - name: Import to k3s containerd
+        run: |
+          docker save -o /tmp/uploadgate-images.tar \
+            uploadgate-router:${{ steps.ver.outputs.router_tag }} \
+            uploadgate-upload-api:${{ steps.ver.outputs.api_tag }}
+          sudo k3s ctr images import /tmp/uploadgate-images.tar
 
-            docker build -t uploadgate-router:${{ steps.ver.outputs.router_tag }} ./router
-            docker build -t uploadgate-upload-api:${{ steps.ver.outputs.api_tag }} ./upload-api
-
-            docker save -o /tmp/uploadgate-images.tar \
-              uploadgate-router:${{ steps.ver.outputs.router_tag }} \
-              uploadgate-upload-api:${{ steps.ver.outputs.api_tag }}
-
-            sudo k3s ctr images import /tmp/uploadgate-images.tar
-
-            helm upgrade --install uploadgate ./helm -n uploadgate --create-namespace \
-              --set router.tag=${{ steps.ver.outputs.router_tag }} \
-              --set uploadApi.tag=${{ steps.ver.outputs.api_tag }}
-
-            kubectl get pods -n uploadgate
-
+      - name: Helm upgrade
+        run: |
+          helm upgrade --install uploadgate ./helm -n uploadgate --create-namespace \
+            --set router.tag=${{ steps.ver.outputs.router_tag }} \
+            --set uploadApi.tag=${{ steps.ver.outputs.api_tag }}
+          kubectl get pods -n uploadgate
