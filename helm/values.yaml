@@ -1,0 +1,20 @@
+namespace: uploadgate
+
+uploadApi:
+  image: "uploadgate-upload-api"
+  tag: "0.1.0"
+  replicas: 1
+  port: 5000
+
+router:
+  image: "uploadgate-router"
+  tag: "0.1.0"
+  replicas: 1
+  port: 80
+  clientMaxBodySize: "100m"
+
+pvc:
+  create: false
+  name: uploadgate-pvc
+  size: 1Gi
+  storageClassName: local-path

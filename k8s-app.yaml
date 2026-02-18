@@ -1,0 +1,97 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: upload-api
+  namespace: uploadgate
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: upload-api
+  template:
+    metadata:
+      labels:
+        app: upload-api
+    spec:
+      containers:
+        - name: upload-api
+          image: uploadgate-upload-api:0.1.0
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: DATA_DIR
+              value: /data/uploads
+          ports:
+            - containerPort: 5000
+          volumeMounts:
+            - name: uploads
+              mountPath: /data/uploads
+      volumes:
+        - name: uploads
+          persistentVolumeClaim:
+            claimName: uploadgate-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: upload-api
+  namespace: uploadgate
+spec:
+  selector:
+    app: upload-api
+  ports:
+    - name: http
+      port: 5000
+      targetPort: 5000
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: router
+  namespace: uploadgate
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: router
+  template:
+    metadata:
+      labels:
+        app: router
+    spec:
+      containers:
+        - name: router
+          image: uploadgate-router:0.1.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: uploads
+              mountPath: /data/uploads
+            - name: nginx-conf
+              mountPath: /etc/nginx/nginx.conf
+              subPath: nginx.conf
+      volumes:
+        - name: uploads
+          persistentVolumeClaim:
+            claimName: uploadgate-pvc
+        - name: nginx-conf
+          configMap:
+            name: router-nginx-conf
+            items:
+              - key: nginx.conf
+                path: nginx.conf
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: router
+  namespace: uploadgate
+spec:
+  selector:
+    app: router
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+  type: ClusterIP

@@ -1,0 +1,26 @@
+name: uploadgate-deploy
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "router/**"
+      - "upload-api/**"
+      - "helm/**"
+      - "version-router"
+      - "version-upload-api"
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Show versions
+        run: |
+          echo "Router version: $(cat version-router)"
+          echo "Upload API version: $(cat version-upload-api)"
+          echo "Helm chart files:"
+          ls -lah helm || true

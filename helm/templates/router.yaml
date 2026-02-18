@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: router
+  namespace: {{ .Values.namespace }}
+spec:
+  replicas: {{ .Values.router.replicas }}
+  selector:
+    matchLabels:
+      app: router
+  template:
+    metadata:
+      labels:
+        app: router
+    spec:
+      containers:
+        - name: router
+          image: "{{ .Values.router.image }}:{{ .Values.router.tag }}"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: {{ .Values.router.port }}
+          volumeMounts:
+            - name: uploads
+              mountPath: /data/uploads
+            - name: nginx-conf
+              mountPath: /etc/nginx/nginx.conf
+              subPath: nginx.conf
+      volumes:
+        - name: uploads
+          persistentVolumeClaim:
+            claimName: {{ .Values.pvc.name }}
+        - name: nginx-conf
+          configMap:
+            name: router-nginx-conf
+            items:
+              - key: nginx.conf
+                path: nginx.conf
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: router
+  namespace: {{ .Values.namespace }}
+spec:
+  selector:
+    app: router
+  ports:
+    - name: http
+      port: 80
+      targetPort: {{ .Values.router.port }}
+  type: ClusterIP

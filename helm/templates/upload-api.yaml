@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: upload-api
+  namespace: {{ .Values.namespace }}
+spec:
+  replicas: {{ .Values.uploadApi.replicas }}
+  selector:
+    matchLabels:
+      app: upload-api
+  template:
+    metadata:
+      labels:
+        app: upload-api
+    spec:
+      containers:
+        - name: upload-api
+          image: "{{ .Values.uploadApi.image }}:{{ .Values.uploadApi.tag }}"
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: DATA_DIR
+              value: /data/uploads
+          ports:
+            - containerPort: {{ .Values.uploadApi.port }}
+          volumeMounts:
+            - name: uploads
+              mountPath: /data/uploads
+      volumes:
+        - name: uploads
+          persistentVolumeClaim:
+            claimName: {{ .Values.pvc.name }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: upload-api
+  namespace: {{ .Values.namespace }}
+spec:
+  selector:
+    app: upload-api
+  ports:
+    - name: http
+      port: {{ .Values.uploadApi.port }}
+      targetPort: {{ .Values.uploadApi.port }}
+  type: ClusterIP
