@@ -15,12 +15,10 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
+      - uses: actions/checkout@v4
       - name: Show versions
         run: |
           echo "Router version: $(cat version-router)"
           echo "Upload API version: $(cat version-upload-api)"
-          echo "Helm chart files:"
-          ls -lah helm || true
+          echo "Tree:"
+          ls -lah
