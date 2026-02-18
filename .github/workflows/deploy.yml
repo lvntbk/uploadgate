@@ -50,4 +50,4 @@ jobs:
           helm upgrade --install uploadgate ./helm -n uploadgate --create-namespace \
             --set router.tag=${{ steps.ver.outputs.router_tag }} \
             --set uploadApi.tag=${{ steps.ver.outputs.api_tag }}
-          sudo k3s sudo k3s kubectl get pods -n uploadgate
+          sudo k3s kubectl get pods -n uploadgate
