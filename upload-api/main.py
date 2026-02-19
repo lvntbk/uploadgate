@@ -7,6 +7,9 @@ from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
 
 APP_NAME = "uploadgate-upload-api"
+UPLOAD_COUNT = 0
+DELETE_COUNT = 0
+
 DATA_DIR = Path(os.getenv("DATA_DIR", "/data/uploads"))
 UPLOAD_TOKEN = os.getenv("UPLOAD_TOKEN", "").strip()  # boşsa auth devre dışı (dev ortamı)
 
@@ -89,6 +92,8 @@ async def delete_file(filename: str, request: Request):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Delete failed: {e}")
 
+    global DELETE_COUNT
+    DELETE_COUNT += 1
     return {"ok": True, "deleted": str(target_path)}
 
 
@@ -121,3 +126,8 @@ async def list_files(prefix: str = "", limit: int = 200):
         raise HTTPException(status_code=500, detail=f"List failed: {e}")
 
     return {"ok": True, "items": items, "count": len(items)}
+
+
+@app.get("/metrics")
+async def metrics():
+    return {"uploads": UPLOAD_COUNT, "deletes": DELETE_COUNT}
