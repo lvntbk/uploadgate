@@ -25,7 +25,11 @@ data:
           add_header Content-Type text/plain;
         }
 
-        location /upload/ {
+        location = /list {
+        proxy_pass http://upload-api:5000/list;
+      }
+
+      location /upload/ {
           proxy_http_version 1.1;
           proxy_set_header Host $host;
           proxy_set_header X-Real-IP $remote_addr;
@@ -38,6 +42,10 @@ data:
         }
 
         location /files/ {
+        if ($request_method = DELETE) {
+          proxy_pass http://upload-api:5000;
+        }
+
           alias /data/uploads/;
           autoindex off;
           try_files $uri =404;
