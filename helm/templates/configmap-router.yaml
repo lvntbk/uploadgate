@@ -2,54 +2,69 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: router-nginx-conf
-  namespace: {{ .Values.namespace }}
+  namespace: "{{ .Release.Namespace }}"
 data:
   nginx.conf: |
     worker_processes  1;
+
     events { worker_connections  1024; }
 
     http {
-      server_tokens off;
-      client_max_body_size {{ .Values.router.clientMaxBodySize }};
+      include       /etc/nginx/mime.types;
+      default_type  application/octet-stream;
 
-      upstream upload_api {
-        server upload-api:{{ .Values.uploadApi.port }};
-        keepalive 16;
-      }
+      sendfile        on;
+      keepalive_timeout  65;
 
       server {
-        listen {{ .Values.router.port }};
+        listen 80;
 
+        # health
         location = /health {
-          return 200 "ok\n";
-          add_header Content-Type text/plain;
+          default_type text/plain;
+          return 200 "ok";
         }
 
+        # LIST -> upload-api
         location = /list {
-        proxy_pass http://upload-api:5000/list;
-      }
-
-      location /upload/ {
           proxy_http_version 1.1;
           proxy_set_header Host $host;
-          proxy_set_header X-Real-IP $remote_addr;
           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
+          proxy_pass http://upload-api:5000;
+        }
+
+        # UPLOAD -> upload-api
+        location /upload/ {
+          proxy_http_version 1.1;
+          proxy_set_header Host $host;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
 
           proxy_request_buffering off;
           proxy_buffering off;
 
-          proxy_pass http://upload_api;
-        }
+          client_max_body_size 1024m;
 
-        location /files/ {
-        if ($request_method = DELETE) {
           proxy_pass http://upload-api:5000;
         }
 
+        # FILES
+        # - GET/HEAD -> static serve from PVC
+        # - DELETE   -> upload-api (so it can remove the file)
+        location /files/ {
+          if ($request_method = DELETE) {
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_pass http://upload-api:5000;
+            break;
+          }
+
           alias /data/uploads/;
-          autoindex off;
-          try_files $uri =404;
           add_header Cache-Control "public, max-age=60";
+          try_files $uri =404;
         }
       }
     }
