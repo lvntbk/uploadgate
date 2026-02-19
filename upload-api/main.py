@@ -70,3 +70,54 @@ async def upload(filename: str, request: Request, overwrite: bool = False):
 
     return JSONResponse({"ok": True, "saved_to": str(target_path)})
 
+
+
+
+@app.delete("/files/{filename:path}")
+async def delete_file(filename: str, request: Request):
+    _require_token(request)
+    target_path = _safe_target_path(DATA_DIR, filename)
+
+    if not target_path.exists():
+        raise HTTPException(status_code=404, detail="Not found")
+
+    if target_path.is_dir():
+        raise HTTPException(status_code=400, detail="Cannot delete a directory")
+
+    try:
+        target_path.unlink()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Delete failed: {e}")
+
+    return {"ok": True, "deleted": str(target_path)}
+
+
+@app.get("/list")
+async def list_files(prefix: str = "", limit: int = 200):
+    if limit < 1 or limit > 2000:
+        raise HTTPException(status_code=400, detail="limit must be 1..2000")
+
+    base = DATA_DIR.resolve()
+
+    # prefix verilirse: base/prefix altında listeler (prefix dosyaysa parent alınır)
+    if prefix:
+        start = _safe_target_path(base, prefix)
+        root = start if start.is_dir() else start.parent
+    else:
+        root = base
+
+    if not root.exists():
+        return {"ok": True, "items": [], "count": 0}
+
+    items = []
+    try:
+        for fp in root.rglob("*"):
+            if fp.is_file():
+                rel = fp.resolve().as_posix().replace(base.as_posix() + "/", "")
+                items.append(rel)
+                if len(items) >= limit:
+                    break
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"List failed: {e}")
+
+    return {"ok": True, "items": items, "count": len(items)}
