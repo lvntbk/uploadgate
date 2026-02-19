@@ -71,6 +71,8 @@ async def upload(filename: str, request: Request, overwrite: bool = False):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Write failed: {e}")
 
+    global UPLOAD_COUNT
+    UPLOAD_COUNT += 1
     return JSONResponse({"ok": True, "saved_to": str(target_path)})
 
 
