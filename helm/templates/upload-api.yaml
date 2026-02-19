@@ -20,8 +20,34 @@ spec:
           env:
             - name: DATA_DIR
               value: /data/uploads
+            - name: UPLOAD_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.uploadApi.auth.secretName }}
+                  key: UPLOAD_TOKEN
           ports:
             - containerPort: {{ .Values.uploadApi.port }}
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 2
+            periodSeconds: 5
+            timeoutSeconds: 2
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 2
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
           volumeMounts:
             - name: uploads
               mountPath: /data/uploads

@@ -1,6 +1,8 @@
 namespace: uploadgate
 
 uploadApi:
+  auth:
+    secretName: uploadgate-auth
   image: "uploadgate-upload-api"
   tag: "0.1.0"
   replicas: 1
