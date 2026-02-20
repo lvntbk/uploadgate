@@ -12,6 +12,9 @@ UPLOAD_COUNT = 0
 DELETE_COUNT = 0
 
 DATA_DIR = Path(os.getenv("DATA_DIR", "/data/uploads"))
+# Max upload size in bytes (default 100 MiB)
+MAX_UPLOAD_BYTES = int(os.getenv('MAX_UPLOAD_BYTES', str(100 * 1024 * 1024)))
+
 UPLOAD_TOKEN = os.getenv("UPLOAD_TOKEN", "").strip()  # boşsa auth devre dışı (dev ortamı)
 
 app = FastAPI(title=APP_NAME, version="0.1.1")
@@ -74,10 +77,25 @@ async def upload(filename: str, request: Request, overwrite: bool = False):
 
     # STREAMING: RAM'e komple alma, chunk chunk yaz
     try:
+        total_bytes = 0
         with open(target_path, "wb") as f:
             async for chunk in request.stream():
                 if chunk:
+                    total_bytes += len(chunk)
+                    if total_bytes > MAX_UPLOAD_BYTES:
+                        # delete partial file to avoid leaving junk on disk
+                        try:
+                            f.close()
+                        except Exception:
+                            pass
+                        try:
+                            target_path.unlink(missing_ok=True)
+                        except Exception:
+                            pass
+                        raise HTTPException(status_code=413, detail=f"File too large (max {MAX_UPLOAD_BYTES} bytes)")
                     f.write(chunk)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Write failed: {e}")
 

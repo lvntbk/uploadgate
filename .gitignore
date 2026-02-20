@@ -1,0 +1,7 @@
+
+# local test artifacts
+*.bin
+*.jpg
+*.png
+ok-test*.txt
+profile.jpg
