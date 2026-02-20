@@ -1,4 +1,5 @@
 from __future__ import annotations
+from uuid import uuid4
 
 import os
 from pathlib import Path
@@ -56,7 +57,16 @@ async def upload(filename: str, request: Request, overwrite: bool = False):
     _require_token(request)
 
     DATA_DIR.mkdir(parents=True, exist_ok=True)
-    target_path = _safe_target_path(DATA_DIR, filename)
+    # Randomize stored filename to avoid predictable names on disk
+    # Keep directory prefix, randomize only the basename
+    import os
+    orig = filename
+    d = os.path.dirname(orig)
+    base = os.path.basename(orig)
+    _, ext = os.path.splitext(base)
+    rnd = f"{uuid4().hex}{ext.lower()}"
+    stored_as = os.path.join(d, rnd) if d else rnd
+    target_path = _safe_target_path(DATA_DIR, stored_as)
     target_path.parent.mkdir(parents=True, exist_ok=True)
 
     if target_path.exists() and not overwrite:
@@ -73,7 +83,7 @@ async def upload(filename: str, request: Request, overwrite: bool = False):
 
     global UPLOAD_COUNT
     UPLOAD_COUNT += 1
-    return JSONResponse({"ok": True, "saved_to": str(target_path)})
+    return JSONResponse({"ok": True, "original": filename, "stored_as": stored_as, "saved_to": str(target_path)})
 
 
 
