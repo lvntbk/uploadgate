@@ -69,4 +69,4 @@ spec:
     - name: http
       port: 80
       targetPort: {{ .Values.router.port }}
-  type: ClusterIP
+  type: {{ .Values.router.service.type | default "ClusterIP" }}

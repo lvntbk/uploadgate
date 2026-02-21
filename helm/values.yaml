@@ -11,6 +11,9 @@ router:
   tag: "0.1.0"
   replicas: 1
   port: 80
+  service:
+    type: ClusterIP   # NodePort yapmak için: NodePort
+    nodePort: 31880   # sadece type=NodePort iken kullanılır
   clientMaxBodySize: "100m"
 
 pvc:
