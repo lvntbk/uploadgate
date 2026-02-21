@@ -15,9 +15,13 @@ DATA_DIR = Path(os.getenv("DATA_DIR", "/data/uploads"))
 # Max upload size in bytes (default 100 MiB)
 MAX_UPLOAD_BYTES = int(os.getenv('MAX_UPLOAD_BYTES', str(100 * 1024 * 1024)))
 
-UPLOAD_TOKEN = os.getenv("UPLOAD_TOKEN", "").strip()  # boşsa auth devre dışı (dev ortamı)
+AUTH_DISABLED = os.getenv("AUTH_DISABLED", "false").lower() in ("1", "true", "yes", "on")
+UPLOAD_TOKEN = os.getenv("UPLOAD_TOKEN", "").strip()
 
 app = FastAPI(title=APP_NAME, version="0.1.1")
+
+if not AUTH_DISABLED and not UPLOAD_TOKEN:
+    raise RuntimeError("UPLOAD_TOKEN is required unless AUTH_DISABLED=true")
 
 
 @app.get("/health")
@@ -26,7 +30,7 @@ def health():
 
 
 def _require_token(request: Request) -> None:
-    if not UPLOAD_TOKEN:
+    if AUTH_DISABLED:
         return
     provided = (request.headers.get("X-Upload-Token") or "").strip()
     if not provided or provided != UPLOAD_TOKEN:
