@@ -10,3 +10,12 @@ profile.jpg
 # test/binary artifacts
 big.bin
 *.bin
+
+# secrets / local config
+.env
+.env.*
+*.pem
+*.key
+*kubeconfig*
+id_rsa
+id_ed25519
