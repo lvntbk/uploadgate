@@ -62,3 +62,29 @@ curl http://127.0.0.1:31880/metrics
 
 Levent İnce
 Backend & DevOps Developer
+
+---
+
+## 🔐 Security
+
+UploadGate güvenlik odaklı tasarlanmıştır.
+
+### Authentication
+- Upload endpoint'leri token tabanlı authentication ile korunur
+- Token uygulama içinde hardcode edilmez
+- Kubernetes Secret üzerinden environment variable olarak mount edilir
+
+### Token Security
+- Production ortamında token'ın **SHA256 hash** değeri saklanır
+- Plain-text token saklanması engellenmiştir
+- Constant-time karşılaştırma (`hmac.compare_digest`) kullanılır  
+  → timing attack riskini azaltır
+
+### Runtime Safety
+- AUTH_DISABLED flag yalnızca development ortamı içindir
+- Production ortamında token zorunludur
+- Path traversal koruması uygulanmıştır
+- Upload boyutu limitlenmiştir
+
+Bu yaklaşım gerçek production Kubernetes sistemlerindeki secret yönetimi ve güvenlik pratiklerini simüle eder.
+
