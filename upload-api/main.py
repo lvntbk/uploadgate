@@ -2,6 +2,8 @@ from __future__ import annotations
 from uuid import uuid4
 
 import os
+import hashlib
+import hmac
 from pathlib import Path
 
 from fastapi import FastAPI, Request, HTTPException
@@ -18,7 +20,19 @@ MAX_UPLOAD_BYTES = int(os.getenv('MAX_UPLOAD_BYTES', str(100 * 1024 * 1024)))
 AUTH_DISABLED = os.getenv("AUTH_DISABLED", "false").lower() in ("1", "true", "yes", "on")
 UPLOAD_TOKEN = os.getenv("UPLOAD_TOKEN", "").strip()
 
-app = FastAPI(title=APP_NAME, version="0.1.1")
+
+UPLOAD_TOKEN_SHA256 = os.getenv("UPLOAD_TOKEN_SHA256", "").strip().lower()  # sha256 hex (preferred)app = FastAPI(title=APP_NAME, version="0.1.1")
+
+def _token_ok(provided: str) -> bool:
+    # Preferred: compare sha256(token) with stored hash
+    if UPLOAD_TOKEN_SHA256:
+        digest = hashlib.sha256(provided.encode("utf-8")).hexdigest()
+        return hmac.compare_digest(digest, UPLOAD_TOKEN_SHA256)
+    # Backward compatible (dev/legacy): plain token compare
+    return bool(UPLOAD_TOKEN) and hmac.compare_digest(provided, UPLOAD_TOKEN)
+
+if not AUTH_DISABLED and not (UPLOAD_TOKEN_SHA256 or UPLOAD_TOKEN):
+    raise RuntimeError("UPLOAD_TOKEN_SHA256 (preferred) or UPLOAD_TOKEN is required unless AUTH_DISABLED=true")
 
 if not AUTH_DISABLED and not UPLOAD_TOKEN:
     raise RuntimeError("UPLOAD_TOKEN is required unless AUTH_DISABLED=true")
@@ -33,7 +47,7 @@ def _require_token(request: Request) -> None:
     if AUTH_DISABLED:
         return
     provided = (request.headers.get("X-Upload-Token") or "").strip()
-    if not provided or provided != UPLOAD_TOKEN:
+    if not provided or not _token_ok(provided):
         raise HTTPException(status_code=401, detail="Unauthorized")
 
 

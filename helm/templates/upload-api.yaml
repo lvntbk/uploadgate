@@ -20,7 +20,12 @@ spec:
           env:
             - name: DATA_DIR
               value: /data/uploads
-            - name: UPLOAD_TOKEN
+            - name: UPLOAD_TOKEN_SHA256
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.uploadApi.auth.secretName }}
+              key: UPLOAD_TOKEN_SHA256
+        - name: UPLOAD_TOKEN
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.uploadApi.auth.secretName }}
