@@ -6,3 +6,7 @@
 ok-test*.txt
 profile.jpg
 *.bak.*
+
+# test/binary artifacts
+big.bin
+*.bin
